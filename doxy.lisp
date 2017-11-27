@@ -16,10 +16,10 @@
 
 
 (defun %document-function (symbol)
-  (let ((args (sb-introspect:function-lambda-list (or (macro-function symbol)
+  (let ((args (sb-introspect:function-lambda-list (or (and (symbolp symbol) (macro-function symbol))
 						      (fdefinition symbol))))
         (reporter (cond
-                    ((macro-function symbol) #'document-macro)
+                    ((and (symbolp symbol) (macro-function symbol)) #'document-macro)
                     ((typep (fdefinition symbol) 'standard-generic-function) #'document-generic)
                     (t #'document-function))))
     (funcall reporter *renderer* symbol args (documentation symbol 'function))))
@@ -39,6 +39,9 @@
   (loop for sym in symbols
      when (fboundp sym)
      collect (cons sym (%document-function sym))
+     when (fboundp `(setf ,sym))
+     collect (let ((sym `(setf ,sym)))
+               (cons sym (%document-function sym)))
      when (find-class sym nil)
      collect (cons sym (%document-class sym))
      when (boundp sym)
